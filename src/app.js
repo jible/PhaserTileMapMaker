@@ -1,31 +1,37 @@
 const defaultTileSize = 32;
-const defaultMapWidth = 16;  // Tiles across
-const defaultMapHeight = 16; // Tiles down
+const defaultMapWidth = 16;
+const defaultMapHeight = 16;
 let tileSize = defaultTileSize;
 let mapWidth = defaultMapWidth;
 let mapHeight = defaultMapHeight;
 
-const tileData = Array.from({ length: mapHeight }, () => Array(mapWidth).fill(-1));
+// Create two layers: one for tiles and one for objects
+const tileLayer = Array.from({ length: mapHeight }, () => Array(mapWidth).fill(-1));
+const objectLayer = Array.from({ length: mapHeight }, () => Array(mapWidth).fill(null));
 
 const canvas = document.getElementById('tilemap');
 const ctx = canvas.getContext('2d');
 const tilePalette = document.getElementById('tilePalette');
 let tilesetImage;
-let selectedTileIndex = 0;
+let selectedTileIndex = -1;
 let isMouseDown = false;
+
+let objects = {};              // Store objects with names as keys
+let selectedObject = null;     // Track the selected object (if any)
 
 // Draw grid with the current settings
 function drawGrid() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  
+  // Draw background tile layer
   for (let y = 0; y < mapHeight; y++) {
     for (let x = 0; x < mapWidth; x++) {
       ctx.strokeRect(x * tileSize, y * tileSize, tileSize, tileSize);
-      
-      // Only draw tiles that are >= 0
-      if (tileData[y][x] >= 0 && tilesetImage) {
-        const tileX = tileData[y][x] % (tilesetImage.width / tileSize);
-        const tileY = Math.floor(tileData[y][x] / (tilesetImage.width / tileSize));
 
+      const tileValue = tileLayer[y][x];
+      if (tileValue >= 0 && tilesetImage) {
+        const tileX = tileValue % (tilesetImage.width / tileSize);
+        const tileY = Math.floor(tileValue / (tilesetImage.width / tileSize));
         ctx.drawImage(
           tilesetImage,
           tileX * tileSize, tileY * tileSize, tileSize, tileSize,
@@ -34,8 +40,22 @@ function drawGrid() {
       }
     }
   }
-}
 
+  // Draw object layer on top of the tile layer
+  for (let y = 0; y < mapHeight; y++) {
+    for (let x = 0; x < mapWidth; x++) {
+      const objectValue = objectLayer[y][x];
+      if (objectValue) {
+        // Draw a placeholder for objects, could also render an icon or label
+        ctx.fillStyle = "rgba(0, 0, 0, 0.2)";
+        ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
+        ctx.fillStyle = "black";
+        ctx.font = "10px Arial";
+        ctx.fillText(objectValue, x * tileSize + 2, y * tileSize + tileSize / 2);
+      }
+    }
+  }
+}
 
 // Load tileset image and populate the tile palette
 document.getElementById('tilesetLoader').addEventListener('change', (event) => {
@@ -56,22 +76,21 @@ document.getElementById('tilesetLoader').addEventListener('change', (event) => {
 
 // Populate the tile palette with tiles from the loaded tileset image
 function populateTilePalette() {
-  tilePalette.innerHTML = ''; // Clear the existing tiles
+  tilePalette.innerHTML = '';
 
   const numCols = Math.floor(tilesetImage.width / tileSize);
   const numRows = Math.floor(tilesetImage.height / tileSize);
 
-  // Create containers for each row of tiles
   for (let row = 0; row < numRows; row++) {
     const rowContainer = document.createElement('div');
-    rowContainer.classList.add('tile-row'); // Class to style each row container
+    rowContainer.classList.add('tile-row');
 
     for (let col = 0; col < numCols; col++) {
       const tile = document.createElement('canvas');
       tile.width = tileSize;
       tile.height = tileSize;
       tile.classList.add('tile');
-      tile.dataset.index = row * numCols + col; // Zero-based index
+      tile.dataset.index = row * numCols + col;
 
       const tileCtx = tile.getContext('2d');
       tileCtx.drawImage(tilesetImage, col * tileSize, row * tileSize, tileSize, tileSize, 0, 0, tileSize, tileSize);
@@ -79,27 +98,61 @@ function populateTilePalette() {
       tile.addEventListener('click', () => {
         document.querySelectorAll('.tile').forEach(tile => tile.classList.remove('selected'));
         tile.classList.add('selected');
-        selectedTileIndex = parseInt(tile.dataset.index); // Set selected tile index
+        selectedTileIndex = parseInt(tile.dataset.index);
+        selectedObject = null;
       });
 
-      rowContainer.appendChild(tile); // Add tile to row container
+      rowContainer.appendChild(tile);
     }
 
-    tilePalette.appendChild(rowContainer); // Add the row container to the palette
+    tilePalette.appendChild(rowContainer);
   }
 }
 
+// Handle adding objects
+document.getElementById('addObjectButton').addEventListener('click', () => {
+  const objectName = prompt("Enter the name of the new object:");
+  if (objectName) {
+    objects[objectName] = objectName;
+    displayObjects();
+  }
+});
 
-// Place a tile on the grid when the mouse is dragged
+// Display objects in the object list
+function displayObjects() {
+  const objectList = document.getElementById('objectList');
+  objectList.innerHTML = '';
+
+  Object.keys(objects).forEach(name => {
+    const objectItem = document.createElement('div');
+    objectItem.classList.add('object-item');
+    objectItem.innerText = name;
+
+    objectItem.addEventListener('click', () => {
+      document.querySelectorAll('.object-item').forEach(item => item.classList.remove('selected'));
+      objectItem.classList.add('selected');
+      selectedObject = name;
+      selectedTileIndex = -1;
+    });
+
+    objectList.appendChild(objectItem);
+  });
+}
+
+// Place a tile or an object on the grid when the mouse is dragged
 function paintTile(event) {
-  if (!isMouseDown) return; // Only paint if mouse is down
+  if (!isMouseDown) return;
 
   const rect = canvas.getBoundingClientRect();
   const x = Math.floor((event.clientX - rect.left) / tileSize);
   const y = Math.floor((event.clientY - rect.top) / tileSize);
 
   if (x >= 0 && x < mapWidth && y >= 0 && y < mapHeight) {
-    tileData[y][x] = selectedTileIndex;
+    if (selectedObject) {
+      objectLayer[y][x] = selectedObject; // Place object on the object layer
+    } else {
+      tileLayer[y][x] = selectedTileIndex; // Place tile on the tile layer
+    }
     drawGrid();
   }
 }
@@ -107,7 +160,7 @@ function paintTile(event) {
 // Handle mouse events for dragging
 canvas.addEventListener('mousedown', (event) => {
   isMouseDown = true;
-  paintTile(event); // Paint the tile on mousedown as well
+  paintTile(event);
 });
 
 canvas.addEventListener('mousemove', paintTile);
@@ -125,7 +178,11 @@ document.getElementById('exportButton').addEventListener('click', () => {
     layers: [
       {
         name: "background",
-        tiles: tileData
+        tiles: tileLayer
+      },
+      {
+        name: "objects",
+        objects: objectLayer
       }
     ]
   };
@@ -159,10 +216,11 @@ document.getElementById('applyResize').addEventListener('click', () => {
     mapWidth = newWidth;
     mapHeight = newHeight;
     tileSize = newTileSize;
-    // Reset tileData array to match the new grid size
-    tileData.length = 0;
+    tileLayer.length = 0;
+    objectLayer.length = 0;
     for (let i = 0; i < mapHeight; i++) {
-      tileData.push(new Array(mapWidth).fill(0));
+      tileLayer.push(new Array(mapWidth).fill(-1));
+      objectLayer.push(new Array(mapWidth).fill(null));
     }
     canvas.width = mapWidth * tileSize;
     canvas.height = mapHeight * tileSize;

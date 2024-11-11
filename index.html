@@ -3,35 +3,34 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tilemap Editor</title>
+  <title>Tile Map Editor</title>
   <link rel="stylesheet" href="src/style.css">
 </head>
 <body>
-
-  <!-- Top section with buttons -->
-  <div id="controls">
-    <input type="file" id="tilesetLoader" accept="image/*" class="button">
-    <button id="exportButton" class="button">Export to JSON</button>
-    
-    <button id="resizeButton" class="button">Resize Grid/Tiles</button>
-
-    <!-- Grid and tile size input controls -->
-    <div id="resizeControls" style="display:none;">
-      <label for="gridWidth">Grid Width: </label>
-      <input type="number" id="gridWidth" value="16">
-      <label for="gridHeight">Grid Height: </label>
-      <input type="number" id="gridHeight" value="16">
-      <label for="tileSize">Tile Size: </label>
-      <input type="number" id="tileSize" value="32">
-      <button id="applyResize" class="button">Apply</button>
+  <div class="controls">
+    <input type="file" id="tilesetLoader" accept="image/*">
+    <button id="exportButton">Export JSON</button>
+    <button id="resizeButton">Resize Grid</button>
+    <button id="addObjectButton">Add Object</button>
+    <div id="resizeControls" style="display: none;">
+      <input type="number" id="gridWidth" placeholder="Grid Width" min="1">
+      <input type="number" id="gridHeight" placeholder="Grid Height" min="1">
+      <input type="number" id="tileSize" placeholder="Tile Size" min="1">
+      <button id="applyResize">Apply</button>
     </div>
   </div>
 
-  <!-- Canvas for the tilemap -->
-  <canvas id="tilemap" width="512" height="512"></canvas>
+  <div class="palette">
+    <h3>Tile Palette</h3>
+    <div id="tilePalette"></div>
+  </div>
 
-  <!-- Tile palette -->
-  <div id="tilePalette"></div>
+  <div class="object-list">
+    <h3>Objects</h3>
+    <div id="objectList"></div>
+  </div>
+
+  <canvas id="tilemap" width="512" height="512"></canvas>
 
   <script src="src/app.js"></script>
 </body>
